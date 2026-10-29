@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout — Loom & Lore</title><style>body{margin:0;background:#f7f3eb;color:#242522;font-family:Arial,sans-serif}main{max-width:620px;margin:auto;padding:70px 24px}.brand{font:26px Georgia,serif;color:#173f35;margin-bottom:55px}h1{font:400 48px Georgia,serif;color:#173f35}p{color:#756f66;line-height:1.6}.summary{margin:28px 0;border-top:1px solid #d8d0c3;border-bottom:1px solid #d8d0c3;padding:12px 0}.row{display:flex;justify-content:space-between;padding:9px 0;font-size:14px}.total{font-weight:700}.empty{display:none;color:#6d2635}form{display:grid;gap:16px;margin-top:35px}label{font-size:13px}input{padding:14px;border:1px solid #d8d0c3;background:#fbf9f4;font-size:15px}button{padding:15px;background:#173f35;color:#fff;border:0;font-size:15px;cursor:pointer;margin-top:10px}.note{font-size:12px}.status{margin-top:18px;display:none;padding:14px;background:#eee7db}.success{color:#173f35}.error{color:#6d2635}</style></head><body><main><div class="brand">Loom & Lore</div><h1>Almost yours.</h1><p>A quiet checkout for a considered purchase.</p><div id="summary" class="summary"></div><p id="empty" class="empty">Your bag is empty. Return to the edit to choose something.</p><form id="checkoutForm" onsubmit="placeOrder(event)"><label>Email<input id="email" type="email" required autocomplete="email"></label><label>Name<input id="name" required autocomplete="name"></label><label>Address<input id="address" required autocomplete="street-address"></label><label>City<input id="city" required autocomplete="address-level2"></label><button id="submitButton">Place order</button></form><div id="status" class="status"></div><p class="note">This checkout is for the portfolio storefront and does not process real payments.</p></main><script>
+const cart=JSON.parse(localStorage.getItem('loomCart')||'[]');
+const summary=document.getElementById('summary');
+const empty=document.getElementById('empty');
+const form=document.getElementById('checkoutForm');
+const total=cart.reduce((sum,item)=>sum+(Number(item.price)||0),0);
+summary.innerHTML=cart.length?cart.map(item=>`<div class="row"><span>${item.name}</span><span>$${item.price}</span></div>`).join('')+`<div class="row total"><span>Total</span><span>$${total}</span></div>`:'';
+if(!cart.length){summary.style.display='none';empty.style.display='block';form.style.display='none';}
+async function placeOrder(e){
+  e.preventDefault();
+  if(!cart.length)return;
+  const button=document.getElementById('submitButton');
+  const status=document.getElementById('status');
+  button.disabled=true;button.textContent='Placing order…';status.style.display='none';
+  try{
+    const response=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('email').value.trim(),firstName:document.getElementById('name').value.trim().split(/\s+/)[0],items:cart,total})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Order event failed');
+    localStorage.removeItem('loomCart');
+    status.className='status success';status.textContent='Thank you — your portfolio order has been placed.';status.style.display='block';form.style.display='none';summary.style.display='none';
+  }catch(error){
+    status.className='status error';status.textContent=error.message||'Unable to place the portfolio order. Please try again.';status.style.display='block';button.disabled=false;button.textContent='Place order';
+  }
+}
+</script></body></html>
